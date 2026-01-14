@@ -1,6 +1,5 @@
 import cookieParser from "cookie-parser";
 import express from "express";
-import cors from "cors";
 import connectDB from "./configs/db.js";
 import "dotenv/config";
 import userRouter from "./routes/userRoute.js";
@@ -16,33 +15,39 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 /* =========================
-   ✅ CORS (FIRST)
+   MANUAL CORS (FINAL)
 ========================= */
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://green-cart-frontend-a1h16xy1r-sunil-kumrs-projects.vercel.app"
+  "https://green-cart-frontend-a1h16xy1r-sunil-kumrs-projects.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-// ✅ Preflight support
-app.options("*", cors());
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 /* =========================
-   ✅ Stripe webhook (RAW)
+   STRIPE WEBHOOK (RAW)
 ========================= */
 app.post(
   "/stripe",
@@ -51,19 +56,19 @@ app.post(
 );
 
 /* =========================
-   ✅ Body & cookies
+   BODY & COOKIES
 ========================= */
 app.use(express.json());
 app.use(cookieParser());
 
 /* =========================
-   ✅ DB & Cloudinary
+   DB & CLOUDINARY
 ========================= */
 await connectDB();
 await connectCloudinary();
 
 /* =========================
-   ✅ Routes
+   ROUTES
 ========================= */
 app.get("/", (req, res) => res.send("API is Working"));
 app.use("/api/user", userRouter);
