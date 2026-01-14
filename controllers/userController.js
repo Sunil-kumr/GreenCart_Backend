@@ -3,6 +3,20 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 /* =========================
+   COOKIE CONFIG (AUTO)
+========================= */
+const cookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,                 // true on production
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,       // 7 days
+  };
+};
+
+/* =========================
    REGISTER
 ========================= */
 export const register = async (req, res) => {
@@ -25,6 +39,7 @@ export const register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await User.create({
       name,
       email,
@@ -37,22 +52,18 @@ export const register = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: false,          // localhost
-      sameSite: "lax",        // ✅ IMPORTANT
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, cookieOptions());
 
     return res.status(201).json({
       success: true,
       user: {
+        _id: user._id,
         name: user.name,
         email: user.email,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("REGISTER ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -96,22 +107,18 @@ export const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: false,      // localhost
-      sameSite: "lax",    // ✅ IMPORTANT
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, cookieOptions());
 
     return res.status(200).json({
       success: true,
       user: {
+        _id: user._id,
         name: user.name,
         email: user.email,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("LOGIN ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -120,7 +127,7 @@ export const login = async (req, res) => {
 };
 
 /* =========================
-   IS AUTH (PROTECTED)
+   IS AUTH (Protected)
 ========================= */
 // req.user comes from authUser middleware
 export const isAuth = async (req, res) => {
@@ -135,18 +142,14 @@ export const isAuth = async (req, res) => {
 ========================= */
 export const logout = async (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    });
+    res.clearCookie("token", cookieOptions());
 
     return res.status(200).json({
       success: true,
       message: "Logged out",
     });
   } catch (error) {
-    console.error(error);
+    console.error("LOGOUT ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
